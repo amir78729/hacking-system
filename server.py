@@ -1,9 +1,13 @@
-#  server.py server
+"""Server
+The origin of this code is from:
+https://github.com/amir78729/python-TCP-client-server-template/blob/main/Server.py
+"""
 
 from socket import *
 from time import ctime
 import select 
 import sys
+
 
 class Server:
     def __init__(self):
@@ -11,8 +15,7 @@ class Server:
         self.PORT = 12346
         self.MESSAGE_LENGTH_SIZE = 64
         self.ENCODING = 'utf-8'
-        self.ADDR = (self.HOST, self.PORT)
-        self.BUFSIZE = 1024
+        self.ADDRESS_INFORMATION = (self.HOST, self.PORT)
 
     def send_message(self, client, msg):
         message = msg.encode(self.ENCODING)
@@ -23,39 +26,36 @@ class Server:
         client.send(message)
 
     def main(self):
-        tcpServer = socket(AF_INET, SOCK_STREAM)
-        tcpServer.bind(self.ADDR)
-        tcpServer.listen(5)
-        gets = [tcpServer, sys.stdin]
+        server = socket(AF_INET, SOCK_STREAM)
+        server.bind(self.ADDRESS_INFORMATION)
+        server.listen(5)
+        gets = [server, sys.stdin]
 
         while True:
             print('{}\t[WAITING] waiting for a malware...'.format(ctime()))
-            tcpClient, addr = tcpServer.accept()
+            client, addr = server.accept()
             print('{}\t[VICTIM DETECTED] new connection from {}:{}'.format(ctime(), addr[0], addr[1]))
-            gets.append(tcpClient)
+            gets.append(client)
 
             while True:
                 try:
-                    readyInput, readyOutput, readyException = select.select(gets, [], [])
-                    for indata in readyInput:
-                        if indata == tcpClient:
-                            # data = tcpClient.recv(self.BUFSIZE)
-                            message_length = int(tcpClient.recv(self.MESSAGE_LENGTH_SIZE).decode(self.ENCODING))
-                            data = tcpClient.recv(message_length).decode(self.ENCODING)
-                            if not data:
+                    ready_input, ready_output, ready_exception = select.select(gets, [], [])
+                    for in_message in ready_input:
+                        if in_message == client:
+                            message_length = int(client.recv(self.MESSAGE_LENGTH_SIZE).decode(self.ENCODING))
+                            message = client.recv(message_length).decode(self.ENCODING)
+                            if not message:
                                 break
-                            print('{}\t[MESSAGE RECEIVED] malware: {}'.format(ctime(), data))
+                            print('{}\t[MESSAGE RECEIVED] malware: {}'.format(ctime(), message))
                         else:
-                            data = input()
-                            if not data:
+                            message = input()
+                            if not message:
                                 break
-                            # tcpClient.send(bytes(data, 'utf-8'))
-                            self.send_message(tcpClient, data)
+                            self.send_message(client, message)
                 except ValueError:
                     print('{}\t[CONNECTION LOST]'.format(ctime()))
                     break
-            tcpClient.close()
-        tcpServer.close()
+            client.close()
 
 
 if __name__ == '__main__':
